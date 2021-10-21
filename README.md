@@ -39,6 +39,3 @@ Scripts associated with the manuscript "Principal Component Analysis Corrects Co
 -PlotPhRM_simulation.R
 *Plots for simulation 
 
-
-![image](https://user-images.githubusercontent.com/92896198/138355457-f4863da4-cb17-4fc4-9581-e9ed7d22faed.png)
-
