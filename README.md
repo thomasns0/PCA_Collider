@@ -10,7 +10,7 @@ Scripts associated with the manuscript "Principal Component Analysis Corrects Co
 *Concatenates the 50 output files from ColliderBiasPhRM_simulation_fenn.R
 
 Simulation output data presented in the manuscript is available here:
-https://drive.google.com/drive/folders/1_AbS77Lbi6gwgmRTIaf7kY3DRDLgjFzl?usp=sharing
+https://drive.google.com/file/d/1XBvQnTMp3rtUR4ozTyn6EAUgk85Ozlm9/view?usp=sharing
 
 1 Real Data Example
 
