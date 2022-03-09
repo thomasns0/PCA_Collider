@@ -6,8 +6,8 @@ OutputNames<-NULL
 for ( i in 1:50){
   Rscript1<-paste0(
     '
-    set.seed(',paste0(i),'*1000+12345)
-    options(stringsAsFactors = T)
+set.seed(',paste0(i),'*1000+12345)
+options(stringsAsFactors = T)
 
 complement <- function(y, rho, x) {
   if (missing(x)) x <- rnorm(length(y)) # Optional: supply a default if `x` is not given
@@ -18,81 +18,116 @@ library(mvtnorm)
 library(psych)
 library(lme4qtl)
 PhRMSimulation<-function(UnObsToEnv, UnObsToPheno, EnvToPheno, PRStoPheno, PRStoEnv, propObserved, UnObsMaxCor, UnObsMinCor){
-#create unobserved data, 100 variables and decompose
-V<-matrix(ncol=100, nrow=100, round(runif(n=100^2, min=UnObsMinCor, max=UnObsMaxCor), digits=1)) #highish correlations here bc need V * t(V)
-V[upper.tri(V)] <- V[lower.tri(V)] 
-diag(V) <- 1
-V <- V * t(V) #force matrix to symmetric
-V
-Unobserved<-rmvnorm(n=1000, mean=rep(0, nrow(V)), sigma = V)
-#PCA of unobserved data
-#EigenUnobserved<-eigen(cor((Unobserved)))
-PC_Unobserved<-prcomp(Unobserved, retx=TRUE, center=TRUE, scale=TRUE)
-#scaling <- PC_Unobserved$sdev[1:2] * sqrt(nrow(Unobserved))
-#pc1_Unobserved <- as.numeric(scale(rowSums(t(t(sweep(Unobserved, 2 ,colMeans(Unobserved))) * EigenUnobserved$vectors[,1] * -1) / scaling[1])))
-#pc2_Unobserved <- as.numeric(scale(rowSums(t(t(sweep(Unobserved, 2, colMeans(Unobserved))) * EigenUnobserved$vectors[,2]) / scaling[2])))
-
-pc1_Unobserved <- PC_Unobserved$x[,1]
-pc2_Unobserved <- PC_Unobserved$x[,2]
-
-#PRS 
-PRS <-rnorm(n=1000, 
-           mean= 0, 
-           sd=1)
-#simulate phenotype that is highly correlated with first PC of the unobserved data
-Environment <- rnorm(n=1000, 
-                     mean= ((pc1_Unobserved * UnObsToEnv) + (PRS*PRStoEnv)), 
-                     sd=sqrt(1-(UnObsToEnv^2) - (PRStoEnv^2)))
-#Pheno is a function of Unobserved, Enivironment, and PRS
-Pheno <-rnorm(n=1000, 
-              mean=((pc1_Unobserved * UnObsToPheno) + (Environment * EnvToPheno) + (PRS * PRStoPheno)), 
-              sd=sqrt(1-(UnObsToPheno^2)-(EnvToPheno^2)-(PRStoPheno^2)))
-#data objects
-Unobserved<-data.frame(Unobserved)
-ID <- seq(1:length(Pheno))
-df<-data.frame(ID, Pheno, Environment, PRS, pc1_Unobserved, pc2_Unobserved)
-#generate proportion of unobserved confounders that are available
-Observed<-Unobserved[,sample(1:100, size=ncol(Unobserved)*propObserved, replace=FALSE)]
-PhRM<-cor(t(Observed))
-colnames(PhRM) <- df$ID
-rownames(PhRM) <- df$ID
-#PCs from available subset
-#EigenObserved<-eigen(cor((Observed)))
-PC_Observed<-prcomp(Observed, retx=TRUE, center=TRUE, scale=TRUE)
-#scaling <- PC_Observed$sdev[1:2] * sqrt(nrow(Observed))
-#pc1_Observed <- as.numeric(scale(rowSums(t(t(sweep(Observed, 2 ,colMeans(Observed))) * EigenObserved$vectors[,1] * -1) / scaling[1])))
-#pc2_Observed <- as.numeric(scale(rowSums(t(t(sweep(Observed, 2, colMeans(Observed))) * EigenObserved$vectors[,2]) / scaling[2])))
-pc1_Observed <- PC_Observed$x[,1]
-pc2_Observed <- PC_Observed$x[,2]
-
-df<-data.frame(df, pc1_Observed, pc2_Observed)
-#cor(df)
-Mod_PhenPRS<-lm(Pheno ~ PRS, data=df)
-Mod_PhenoPrsEnv<-lm(Pheno ~ PRS + Environment, data=df)
-Mod_PhenoPrsEnvUnobsPC<-lm(Pheno ~ PRS + Environment + pc1_Unobserved, data=df)
-Mod_PhenoPrsEnvObsPC<-lm(Pheno ~ PRS + Environment + pc1_Observed, data=df)
-PhenPRS<-summary(Mod_PhenPRS)$coef["PRS",c("Estimate", "Pr(>|t|)")]
-PhenoPrsEnv<-summary(Mod_PhenoPrsEnv)$coef["PRS",c("Estimate", "Pr(>|t|)")]
-PhenPrsEnvUnobsPC<-summary(Mod_PhenoPrsEnvUnobsPC)$coef["PRS",c("Estimate", "Pr(>|t|)")]
-PhenPrsEnvObsPC<-summary(Mod_PhenoPrsEnvObsPC)$coef["PRS",c("Estimate", "Pr(>|t|)")]
-Estimates<-data.frame(cbind(
-                 c(PhenPRS[1], PhenoPrsEnv[1], PhenPrsEnvUnobsPC[1], PhenPrsEnvObsPC[1]), 
-                 c("~PRS", "~Prs+Env", "~Prs+Env+UnobsPC", "~Prs+Env+ObsPC"),
-                 c(propObserved,propObserved,propObserved,propObserved),
-                 c(PRStoEnv, PRStoEnv, PRStoEnv, PRStoEnv),
-                 c(UnObsMinCor, UnObsMinCor, UnObsMinCor, UnObsMinCor),
-                 c(UnObsMaxCor, UnObsMaxCor, UnObsMaxCor, UnObsMaxCor)))
-colnames(Estimates)<-c("B", "Model", "ProportionObserved", "PRStoEnv", "UnObsMinCor", "UnObsMaxCor")
-rownames(Estimates)<-seq(1:4)
-Pvalues<-data.frame(cbind(c(PhenPRS[2], PhenoPrsEnv[2], PhenPrsEnvUnobsPC[2], PhenPrsEnvObsPC[2]), 
-                          c("~PRS", "~Prs+Env", "~Prs+Env+UnobsPC", "~Prs+Env+ObsPC"),
-                          c(propObserved,propObserved,propObserved,propObserved),
-                          c(PRStoEnv, PRStoEnv, PRStoEnv, PRStoEnv),
-                          c(UnObsMinCor, UnObsMinCor, UnObsMinCor, UnObsMinCor),
-                          c(UnObsMaxCor, UnObsMaxCor, UnObsMaxCor, UnObsMaxCor)))
-colnames(Pvalues)<-c("B", "Model", "ProportionObserved", "PRStoEnv", "UnObsMinCor", "UnObsMaxCor")
-rownames(Pvalues)<-seq(1:4)
-return(list(Estimates,Pvalues))
+  #create unobserved data, 100 variables and decompose
+  V<-matrix(ncol=100, nrow=100, round(runif(n=100^2, min=UnObsMinCor, max=UnObsMaxCor), digits=1)) #highish correlations here bc need V * t(V)
+  V[upper.tri(V)] <- V[lower.tri(V)] 
+  diag(V) <- 1
+  V <- V * t(V) #force matrix to symmetric
+  V
+  Unobserved<-rmvnorm(n=1000, mean=rep(0, nrow(V)), sigma = V)
+  #PCA of unobserved data
+  #EigenUnobserved<-eigen(cor((Unobserved)))
+  PC_Unobserved<-prcomp(Unobserved, retx=TRUE, center=TRUE, scale=TRUE)
+  #scaling <- PC_Unobserved$sdev[1:2] * sqrt(nrow(Unobserved))
+  #pc1_Unobserved <- as.numeric(scale(rowSums(t(t(sweep(Unobserved, 2 ,colMeans(Unobserved))) * EigenUnobserved$vectors[,1] * -1) / scaling[1])))
+  #pc2_Unobserved <- as.numeric(scale(rowSums(t(t(sweep(Unobserved, 2, colMeans(Unobserved))) * EigenUnobserved$vectors[,2]) / scaling[2])))
+  
+  pc1_Unobserved <- PC_Unobserved$x[,1]
+  pc2_Unobserved <- PC_Unobserved$x[,2]
+  
+  #PRS 
+  PRS <-rnorm(n=1000, 
+              mean= 0, 
+              sd=1)
+  #simulate phenotype that is highly correlated with first PC of the unobserved data
+  Environment <- rnorm(n=1000, 
+                       mean= ((pc1_Unobserved * UnObsToEnv) + (PRS*PRStoEnv)), 
+                       sd=sqrt(1-(UnObsToEnv^2) - (PRStoEnv^2)))
+  #Pheno is a function of Unobserved, Enivironment, and PRS
+  Pheno <-rnorm(n=1000, 
+                mean=((pc1_Unobserved * UnObsToPheno) + (Environment * EnvToPheno) + (PRS * PRStoPheno)), 
+                sd=sqrt(1-(UnObsToPheno^2)-(EnvToPheno^2)-(PRStoPheno^2)))
+  #data objects
+  Unobserved<-data.frame(Unobserved)
+  ID <- seq(1:length(Pheno))
+  df<-data.frame(ID, Pheno, Environment, PRS, pc1_Unobserved, pc2_Unobserved)
+  #generate proportion of unobserved confounders that are available
+  Observed<-Unobserved[,sample(1:100, size=ncol(Unobserved)*propObserved, replace=FALSE)]
+  PhRM<-cor(t(Observed))
+  colnames(PhRM) <- df$ID
+  rownames(PhRM) <- df$ID
+  #PCs from available subset
+  #EigenObserved<-eigen(cor((Observed)))
+  PC_Observed<-prcomp(Observed, retx=TRUE, center=TRUE, scale=TRUE)
+  #scaling <- PC_Observed$sdev[1:2] * sqrt(nrow(Observed))
+  #pc1_Observed <- as.numeric(scale(rowSums(t(t(sweep(Observed, 2 ,colMeans(Observed))) * EigenObserved$vectors[,1] * -1) / scaling[1])))
+  #pc2_Observed <- as.numeric(scale(rowSums(t(t(sweep(Observed, 2, colMeans(Observed))) * EigenObserved$vectors[,2]) / scaling[2])))
+  pc1_Observed <- PC_Observed$x[,1]
+  pc2_Observed <- PC_Observed$x[,2]
+  
+  df<-data.frame(df, pc1_Observed, pc2_Observed)
+  #cor(df)
+  Mod_PhenPRS<-lm(Pheno ~ PRS, data=df)
+  Mod_PhenoPrsEnv<-lm(Pheno ~ PRS + Environment, data=df)
+  Mod_PhenoPrsEnvUnobsPC<-lm(Pheno ~ PRS + Environment + pc1_Unobserved, data=df)
+  Mod_PhenoPrsEnvObsPC<-lm(Pheno ~ PRS + Environment + pc1_Observed, data=df)
+  
+  Mod_PhenoEnv<-lm(Pheno ~ Environment, data=df)
+  Mod_PhenoEnvUnobsPC<-lm(Pheno ~ Environment + pc1_Unobserved, data=df)
+  Mod_PhenoEnvObsPC<-lm(Pheno ~ Environment + pc1_Observed, data=df)
+  
+  R2_JustPRS<-summary(Mod_PhenPRS)$r.squared
+  ChangeR2_aboveEnv<-summary(Mod_PhenoPrsEnv)$r.squared - summary(Mod_PhenoEnv)$r.squared
+  ChangeR2_aboveEnvUnobsPC<-summary(Mod_PhenoPrsEnvUnobsPC)$r.squared - summary(Mod_PhenoEnvUnobsPC)$r.squared
+  ChangeR2_aboveEnvObsPC<-summary(Mod_PhenoPrsEnvObsPC)$r.squared - summary(Mod_PhenoEnvObsPC)$r.squared
+  
+  R2_Env <-summary(Mod_PhenoEnv)$r.squared
+  R2_PrsEnv <- summary(Mod_PhenoPrsEnv)$r.squared
+  R2_PrsEnvUnobsPC<-summary(Mod_PhenoPrsEnvUnobsPC)$r.squared
+  R2_EnvUnobsPC <- summary(Mod_PhenoEnvUnobsPC)$r.squared
+  R2_PrsEnvObsPC<-summary(Mod_PhenoPrsEnvObsPC)$r.squared 
+  R2_EnvObsPC<-summary(Mod_PhenoEnvObsPC)$r.squared
+  
+  R2sRaw<- data.frame(cbind(
+      c(R2_JustPRS, R2_Env,   R2_PrsEnv,   R2_PrsEnvUnobsPC,   R2_EnvUnobsPC,  R2_PrsEnvObsPC,   R2_EnvObsPC),
+      c("JustPRS", "R2_Env", "R2_PrsEnv", "R2_PrsEnvUnobsPC", "R2_EnvUnobsPC", "R2_PrsEnvObsPC", "R2_EnvObsPC"),
+      c(propObserved,propObserved,propObserved,propObserved,propObserved,propObserved,propObserved),
+      c(PRStoEnv, PRStoEnv, PRStoEnv, PRStoEnv,PRStoEnv,PRStoEnv,PRStoEnv),
+      c(UnObsMinCor, UnObsMinCor, UnObsMinCor, UnObsMinCor,UnObsMinCor,UnObsMinCor,UnObsMinCor),
+      c(UnObsMaxCor, UnObsMaxCor, UnObsMaxCor, UnObsMaxCor,UnObsMaxCor,UnObsMaxCor,UnObsMaxCor)))
+  colnames(R2sRaw)<-c("R2raw", "Model", "ProportionObserved", "PRStoEnv", "UnObsMinCor", "UnObsMaxCor")
+    
+  R2s<-data.frame(cbind(
+      c(R2_JustPRS,ChangeR2_aboveEnv,ChangeR2_aboveEnvUnobsPC,ChangeR2_aboveEnvObsPC),
+      c("JustPRS", "ChangeR2_aboveEnv", "ChangeR2_aboveEnvUnobsPC", "ChangeR2_aboveEnvObsPC"),
+      c(propObserved,propObserved,propObserved,propObserved),
+      c(PRStoEnv, PRStoEnv, PRStoEnv, PRStoEnv),
+      c(UnObsMinCor, UnObsMinCor, UnObsMinCor, UnObsMinCor),
+      c(UnObsMaxCor, UnObsMaxCor, UnObsMaxCor, UnObsMaxCor)))
+  colnames(R2s)<-c("R2", "Model", "ProportionObserved", "PRStoEnv", "UnObsMinCor", "UnObsMaxCor")
+  
+  PhenPRS<-summary(Mod_PhenPRS)$coef["PRS",c("Estimate", "Pr(>|t|)")]
+  PhenoPrsEnv<-summary(Mod_PhenoPrsEnv)$coef["PRS",c("Estimate", "Pr(>|t|)")]
+  PhenPrsEnvUnobsPC<-summary(Mod_PhenoPrsEnvUnobsPC)$coef["PRS",c("Estimate", "Pr(>|t|)")]
+  PhenPrsEnvObsPC<-summary(Mod_PhenoPrsEnvObsPC)$coef["PRS",c("Estimate", "Pr(>|t|)")]
+  Estimates<-data.frame(cbind(
+    c(PhenPRS[1], PhenoPrsEnv[1], PhenPrsEnvUnobsPC[1], PhenPrsEnvObsPC[1]), 
+    c("~PRS", "~Prs+Env", "~Prs+Env+UnobsPC", "~Prs+Env+ObsPC"),
+    c(propObserved,propObserved,propObserved,propObserved),
+    c(PRStoEnv, PRStoEnv, PRStoEnv, PRStoEnv),
+    c(UnObsMinCor, UnObsMinCor, UnObsMinCor, UnObsMinCor),
+    c(UnObsMaxCor, UnObsMaxCor, UnObsMaxCor, UnObsMaxCor)))
+  colnames(Estimates)<-c("B", "Model", "ProportionObserved", "PRStoEnv", "UnObsMinCor", "UnObsMaxCor")
+  rownames(Estimates)<-seq(1:4)
+  Pvalues<-data.frame(cbind(c(PhenPRS[2], PhenoPrsEnv[2], PhenPrsEnvUnobsPC[2], PhenPrsEnvObsPC[2]), 
+                            c("~PRS", "~Prs+Env", "~Prs+Env+UnobsPC", "~Prs+Env+ObsPC"),
+                            c(propObserved,propObserved,propObserved,propObserved),
+                            c(PRStoEnv, PRStoEnv, PRStoEnv, PRStoEnv),
+                            c(UnObsMinCor, UnObsMinCor, UnObsMinCor, UnObsMinCor),
+                            c(UnObsMaxCor, UnObsMaxCor, UnObsMaxCor, UnObsMaxCor)))
+  colnames(Pvalues)<-c("B", "Model", "ProportionObserved", "PRStoEnv", "UnObsMinCor", "UnObsMaxCor")
+  rownames(Pvalues)<-seq(1:4)
+  return(list(Estimates,Pvalues,R2s,R2sRaw))
 }
 
 #Path from Unobserved PC1 to Environment
@@ -100,7 +135,7 @@ UnObsToEnv<-0.5
 #Path from Unobserved to Pheno
 UnObsToPheno<-0.5
 #Path from Environment to Pheno
-EnvToPheno<-0.01
+EnvToPheno<-0.5
 #Path from PRS to Pheno
 PRStoPheno<-sqrt(0.01)
 #Correlation of PRS with Environment
@@ -117,6 +152,8 @@ PropObserved_range <- seq(from=0.1, to=1.0, by= 0.01)
 #run 
 outB<- NULL
 outP<- NULL
+outR2<- NULL
+outR2raw<- NULL
 NumberofSimulationReps <- 25
 zzzz<-1
 repeat {
@@ -130,6 +167,8 @@ for (propObserved in PropObserved_range){
 out<-PhRMSimulation(UnObsToEnv, UnObsToPheno, EnvToPheno, PRStoPheno, PRStoEnv, propObserved, UnObsMaxCor, UnObsMinCor)
 outB<-rbind(outB, out[[1]])
 outP<-rbind(outP, out[[2]])
+outR2<-rbind(outR2, out[[3]])
+outR2raw<-rbind(outR2raw, out[[4]])
 }
 }
 }
@@ -141,6 +180,8 @@ outP<-rbind(outP, out[[2]])
 proc.time() - ptm
 ALLoutB<-outB
 ALLoutP<-outP
+ALLoutR2<-outR2
+ALLoutR2raw<-outR2raw
 outputfile<-ALLoutB'
   )
   
@@ -148,9 +189,10 @@ outputfile<-ALLoutB'
     paste0(
       "
   write.table(outputfile,", paste0('"',"/vcu_gpfs2/home/thomasns/ColliderBiasPhRM/ALLoutB", "_", i,".csv", '"'), ",sep=',', col.names = FALSE, row.names = FALSE, quote = FALSE)
-  "
+   write.table(ALLoutR2,", paste0('"',"/vcu_gpfs2/home/thomasns/ColliderBiasPhRM/ALLoutR2", "_", i,".csv", '"'), ",sep=',', col.names = FALSE, row.names = FALSE, quote = FALSE)
+  write.table(ALLoutR2raw,", paste0('"',"/vcu_gpfs2/home/thomasns/ColliderBiasPhRM/ALLoutR2raw", "_", i,".csv", '"'), ",sep=',', col.names = FALSE, row.names = FALSE, quote = FALSE)
+      "
     )
-  
   Rscript<-paste0(Rscript1, Rscript2)
   
   write.table(Rscript, paste0('/vcu_gpfs2/home/thomasns/ColliderBiasPhRM/ALLoutB',"_", i, '.R'), sep=",", col.names = FALSE, row.names = FALSE, quote = FALSE)
