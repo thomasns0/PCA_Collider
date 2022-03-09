@@ -13,6 +13,7 @@ Scripts associated with the manuscript "Principal Component Analysis Reduces Col
   *Concatenates the 50 R-squared output files from ColliderBiasPhRM_simulation_fenn.R
 
 -Logit and Probit Simulations
+
 --ColliderBiasPhRM_simulation_fenn_logit.R
   *Runs simulation with logistic binary outcome variable on remote server as 50 jobs 
 
@@ -61,6 +62,7 @@ https://drive.google.com/drive/folders/1Wpd9WoFL4C1Xt_xHX7VNDJGvP3mNwSzY?usp=sha
   *Plots R-squared from simulation with normally distributed continuous outcome variable
 
 -Plot Logit and Probit Simulations
+
 --PlotPhRM_simulation_logit.R
   *Plots effect sizes from simulation with logistic binary outcome variable
  
