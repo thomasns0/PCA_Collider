@@ -1,7 +1,7 @@
 # PCA_Collider
 Scripts associated with the manuscript "Principal Component Analysis Reduces Collider Bias in Polygenic Risk Score Effect Size Estimation"
 
-<b>**0 Simulation**<b>
+<b>**0 Simulation**</b>
 
 -ColliderBiasPhRM_simulation_fenn.R
   *Runs simulation with normally distributed continuous outcome variable on remote server as 50 jobs 
@@ -29,7 +29,7 @@ Simulation output data is available here:
 https://drive.google.com/drive/folders/1Wpd9WoFL4C1Xt_xHX7VNDJGvP3mNwSzY?usp=sharing
 
 
-<b>**1 Real Data Example**<b>
+<b>**1 Real Data Example**</b>
 
 -ColliderPCA_AUDtarget_AnyEnv_COGA.R
   *Runs real data PCA and prediction analyses for ALC PRS, EXT PRS, TOB environment, and EDU environment
@@ -38,7 +38,7 @@ https://drive.google.com/drive/folders/1Wpd9WoFL4C1Xt_xHX7VNDJGvP3mNwSzY?usp=sha
   * Function to run identify confounder variables for PCA, implement imputation, run PCA, and run parallel analysis to identify the number of PCs to use as covariates. Dependency for ColliderPCA_AUDtarget_AnyEnv_COGA.R
 
 
-<b>**2 misc**<b>
+<b>**2 misc**</b>
 
 -PlotsAndTables
 
