@@ -1,5 +1,6 @@
 library(ggplot2)
-w<-read.table('00resultsFiles/CombinedOutputALLoutB_nVars100_Orthog.csv', sep=",", header=FALSE)
+w<-read.table('CombinedOutputALLoutB.csv', sep=",", header=FALSE)
+
 colnames(w)<-c("B", "Model", "ProportionObserved", "PRStoEnv", "UnObsMinCor", "UnObsMaxCor")
 head(w)
 
@@ -23,6 +24,8 @@ colnames(SUBSETS)<-c("rGE", "UnObsMinCor")
 nrow(w)/24
 
 #rename models
+class(w$Model)
+w$Model<-as.character(w$Model)
 w$Model[w$Model=="~Prs+Env+UnobsPC"]<-"~Prs+Env+CompletePC"
 w$Model[w$Model=="~Prs+Env+ObsPC"]<-"~Prs+Env+IncompletePC"
 
@@ -32,7 +35,7 @@ nrow(w)/ #number of rows
   length(unique(w$UnObsMinCor)) * # 4 correlation structures
   length(unique(w$Model))) #4 models
 #1250 reps for each permutation
-  
+
 lowRGE_lowConfoundCor<-w[w$PRStoEnv==0.1&w$UnObsMinCor==0.2,]
 lowRGE_highConfoundCor<-w[w$PRStoEnv==0.1&w$UnObsMinCor==0.5,]
 highRGE_lowConfoundCor<-w[w$PRStoEnv==0.5&w$UnObsMinCor==0.2,]
@@ -43,6 +46,71 @@ highRGE_highestConfoundCor<-w[w$PRStoEnv==0.5&w$UnObsMinCor==0.8,]
 
 lowRGE_lowestConfoundCor<-w[w$PRStoEnv==0.1&w$UnObsMinCor==0.05,]
 highRGE_lowestConfoundCor<-w[w$PRStoEnv==0.5&w$UnObsMinCor==0.05,]
+
+#calculate % change 
+
+percentChange<-function(subsetdf){
+  PRS<-subsetdf[subsetdf$Model=="~PRS",]
+  PRS<-PRS[order(row.names(PRS)),]
+  PRSENV<-subsetdf[subsetdf$Model=="~Prs+Env",]
+  PRSENV<-PRSENV[order(row.names(PRSENV)),]
+  
+  PRSENV_10.25<-subsetdf[subsetdf$Model=="~Prs+Env"& (subsetdf$ProportionObserved>=0.10&subsetdf$ProportionObserved<=0.25),]
+  PRSENV_10.25<-PRSENV_10.25[order(row.names(PRSENV_10.25)),]
+  
+  PRSENV_25.50<-subsetdf[subsetdf$Model=="~Prs+Env"& (subsetdf$ProportionObserved>0.25&subsetdf$ProportionObserved<=0.50),]
+  PRSENV_25.50<-PRSENV_25.50[order(row.names(PRSENV_25.50)),]
+  
+  PRSENV_50.75<-subsetdf[subsetdf$Model=="~Prs+Env"& (subsetdf$ProportionObserved>0.50&subsetdf$ProportionObserved<=0.75),]
+  PRSENV_50.75<-PRSENV_50.75[order(row.names(PRSENV_50.75)),]
+  
+  PRSENV_75.99<-subsetdf[subsetdf$Model=="~Prs+Env"& (subsetdf$ProportionObserved>0.75&subsetdf$ProportionObserved<=0.99),]
+  PRSENV_75.99<-PRSENV_75.99[order(row.names(PRSENV_75.99)),]
+  
+  PRSENVINCPC_10.25<-subsetdf[subsetdf$Model=="~Prs+Env+IncompletePC"& (subsetdf$ProportionObserved>=0.10&subsetdf$ProportionObserved<=0.25),]
+  PRSENVINCPC_10.25<-PRSENVINCPC_10.25[order(row.names(PRSENVINCPC_10.25)),]
+  
+  PRSENVINCPC_25.50<-subsetdf[subsetdf$Model=="~Prs+Env+IncompletePC"& (subsetdf$ProportionObserved>0.25&subsetdf$ProportionObserved<=0.50),]
+  PRSENVINCPC_25.50<-PRSENVINCPC_25.50[order(row.names(PRSENVINCPC_25.50)),]
+  
+  PRSENVINCPC_50.75<-subsetdf[subsetdf$Model=="~Prs+Env+IncompletePC"& (subsetdf$ProportionObserved>0.50&subsetdf$ProportionObserved<=0.75),]
+  PRSENVINCPC_50.75<-PRSENVINCPC_50.75[order(row.names(PRSENVINCPC_50.75)),]
+  
+  PRSENVINCPC_75.99<-subsetdf[subsetdf$Model=="~Prs+Env+IncompletePC"& (subsetdf$ProportionObserved>0.75&subsetdf$ProportionObserved<=0.99),]
+  PRSENVINCPC_75.99<-PRSENVINCPC_75.99[order(row.names(PRSENVINCPC_75.99)),]
+  
+  #average inflation as percentage of true value, uncontrolled
+  AverageInflation<-mean(PRS$B)/0.1 
+  #average decrease as percentage of true value, collider
+  AverageDecrease<-mean(PRS$B - PRSENV$B) / 0.1 
+  #average increase as percentage of true value, correction at 10% 50% and 80%
+  Correction10.25<-mean(PRSENVINCPC_10.25$B - PRSENV_10.25$B) / 0.1
+  Correction25.50<-mean(PRSENVINCPC_25.50$B - PRSENV_25.50$B) / 0.1
+  Correction50.75<-mean(PRSENVINCPC_50.75$B - PRSENV_50.75$B) / 0.1
+  Correction75.99<-mean(PRSENVINCPC_75.99$B - PRSENV_75.99$B) / 0.1
+  #raw values
+
+  return(list(
+          PercentDecrease=c(
+          AverageInflation=paste0(round(100*AverageInflation, digits=2), "%"),
+           AverageDeflation=paste0(round(100*AverageDecrease, digits=2), "%"),
+           Correction10.25=paste0(round(100*Correction10.25, digits=2), "%"), 
+          Correction25.50=paste0(round(100*Correction25.50, digits=2), "%"), 
+           Correction50.75=paste0(round(100*Correction50.75, digits=2), "%"), 
+           Correction75.99=paste0(round(100*Correction75.99, digits=2), "%")),
+          RawMeans=c(PRS=mean(PRS$B), PRS_Env=  mean(PRSENV$B), 
+                     PRS_Env_PC10.25= mean(PRSENVINCPC_10.25$B),
+                     PRS_Env_PC25.50= mean(PRSENVINCPC_25.50$B),
+                     PRS_Env_PC50.75= mean(PRSENVINCPC_50.75$B),
+                     PRS_Env_PC75.99= mean(PRSENVINCPC_75.99$B))
+          ))
+}
+#Figure 2
+percentChange(lowRGE_lowestConfoundCor)
+percentChange(highRGE_lowestConfoundCor)
+#Figure 3
+percentChange(lowRGE_highestConfoundCor)
+percentChange(highRGE_highestConfoundCor)
 
 ###################################################################################
 ###################################################################################
@@ -81,7 +149,7 @@ MakePlot<-function(outB){
     scale_color_manual(values=c(Colors))+
     theme_bw()+theme(
       plot.title= element_text(size = 15),
-      axis.title.x =  element_blank(),
+      axis.title.x =  element_text(size=12),
       axis.text.x = element_text(size = 12),
       axis.text.y = element_text(size = 12),
       axis.title.y = element_text(size = 20),
@@ -98,7 +166,7 @@ MakePlot<-function(outB){
     geom_violin()+
     #geom_point(aes(group=Model), size=0.1, alpha=0.05)+
     labs(title=paste0(""),
-         x ="", y = "PRS B", fill = "Model")+
+         x ="Model", y = "PRS B", fill = "Model")+
     geom_hline(yintercept = 0, linetype="solid")+
     geom_hline(yintercept = 0.1, linetype="dashed")+
     scale_x_discrete(labels=c("","","",""))+
@@ -106,7 +174,7 @@ MakePlot<-function(outB){
     scale_fill_manual(values=c(Colors))+
     theme_bw()+theme(
       plot.title= element_text(size = 15),
-      axis.title.x = element_blank(),
+      axis.title.x =  element_text(size=12),
       axis.text.x = element_text(size = 12),
       axis.text.y = element_blank(),
       axis.title.y = element_blank(),
@@ -170,7 +238,7 @@ lm(B~ProportionObserved,
 ####################################################################
 ####################################################################
 ####################################################################
-png("PLOT1.tiff", width = 2250, height = 2550, units = 'px', res = 300)
+png("PLOT1_R&R.tiff", width = 2250, height = 2550, units = 'px', res = 300)
 
 grid.arrange(             g_legend(plot1[[2]]), 
                           nrow=2,heights=c(1, 10),
@@ -197,17 +265,17 @@ grid.arrange(             g_legend(plot1[[2]]),
                             gp=gpar(fontsize=20,font=1)),
              left=textGrob(paste0("PRS Beta"), rot=90,
                            gp=gpar(fontsize=18,font=1)),
-             bottom=textGrob(paste0("LEFT: Proportion of Confounders | RIGHT: Model"), 
-                             gp=gpar(fontsize=18,font=1))
-
-             )
+  bottom=textGrob(paste0("*Dotted line indicates true PRS effect*"), 
+                  gp=gpar(fontsize=12,font=1))
+  
+)
 dev.off()
 #PLOT 2
 ####################################################################
 ####################################################################
 ####################################################################
 ####################################################################
-png("PLOT2.tiff", width = 2250, height = 2550, units = 'px', res = 300)
+png("PLOT2_R&R.tiff", width = 2250, height = 2550, units = 'px', res = 300)
 grid.arrange(             g_legend(plot3[[2]]), 
                           nrow=2,heights=c(1, 10),
                           arrangeGrob(plot3[[1]] + theme(legend.position="none", 
@@ -233,8 +301,8 @@ grid.arrange(             g_legend(plot3[[2]]),
                                          gp=gpar(fontsize=20,font=1)),
                           left=textGrob(paste0("PRS Beta"), rot=90,
                                         gp=gpar(fontsize=18,font=1)),
-                          bottom=textGrob(paste0("LEFT: Proportion of Confounders | RIGHT: Model"), 
-                                          gp=gpar(fontsize=18,font=1))
+                          bottom=textGrob(paste0("*Dotted line indicates true PRS effect*"), 
+                                          gp=gpar(fontsize=12,font=1))
                           
 )
 dev.off()
@@ -243,7 +311,7 @@ dev.off()
 ####################################################################
 ####################################################################
 ####################################################################
-png("PLOT3.tiff", width = 2250, height = 2550, units = 'px', res = 300)
+png("PLOT3_R&R.tiff", width = 2250, height = 2550, units = 'px', res = 300)
 grid.arrange(             g_legend(plot5[[2]]), 
                           nrow=2,heights=c(1, 10),
                           arrangeGrob(plot5[[1]] + theme(legend.position="none", 
@@ -269,8 +337,8 @@ grid.arrange(             g_legend(plot5[[2]]),
                                          gp=gpar(fontsize=20,font=1)),
                           left=textGrob(paste0("PRS Beta"), rot=90,
                                         gp=gpar(fontsize=18,font=1)),
-                          bottom=textGrob(paste0("LEFT: Proportion of Confounders | RIGHT: Model"), 
-                                          gp=gpar(fontsize=18,font=1))
+                          bottom=textGrob(paste0("*Dotted line indicates true PRS effect*"), 
+                                          gp=gpar(fontsize=12,font=1))
                           
 )
 dev.off()
@@ -279,7 +347,7 @@ dev.off()
 ####################################################################
 ####################################################################
 ####################################################################
-png("PLOT4.tiff", width = 2250, height = 2550, units = 'px', res = 300)
+png("PLOT4_R&R.tiff", width = 2250, height = 2550, units = 'px', res = 300)
 grid.arrange(             g_legend(plot7[[2]]), 
                           nrow=2,heights=c(1, 10),
                           arrangeGrob(plot7[[1]] + theme(legend.position="none", 
@@ -305,15 +373,76 @@ grid.arrange(             g_legend(plot7[[2]]),
                                          gp=gpar(fontsize=20,font=1)),
                           left=textGrob(paste0("PRS Beta"), rot=90,
                                         gp=gpar(fontsize=18,font=1)),
-                          bottom=textGrob(paste0("LEFT: Proportion of Confounders | RIGHT: Model"), 
-                                          gp=gpar(fontsize=18,font=1))
+                          bottom=textGrob(paste0("*Dotted line indicates true PRS effect*"), 
+                                          gp=gpar(fontsize=12,font=1))
+                          
+)
                           
 )
 dev.off()
 
   
-  
-  
+####################################################################
+####################################################################
+#plots PRS b means
+
+plotdf<-rbind(
+  data.frame(B=percentChange(lowRGE_lowestConfoundCor)[[2]], 
+             Model=names(percentChange(lowRGE_lowestConfoundCor)[[2]]),
+             Parameters="rGE=0.1,ConfounderCor=0.05-0.1"),
+  data.frame(B=percentChange(highRGE_lowestConfoundCor)[[2]], 
+             Model=names(percentChange(highRGE_lowestConfoundCor)[[2]]),
+             Parameters="rGE=0.5,ConfounderCor=0.05-0.1"),
+  data.frame(B=percentChange(lowRGE_lowConfoundCor)[[2]], 
+             Model=names(percentChange(lowRGE_lowConfoundCor)[[2]]),
+             Parameters="rGE=0.1, ConfounderCor=0.2-0.3"),
+  data.frame(B=percentChange(highRGE_lowConfoundCor)[[2]], 
+             Model=names(percentChange(highRGE_lowConfoundCor)[[2]]),
+             Parameters="rGE=0.5, ConfounderCor=0.2-0.3"),
+  data.frame(B=percentChange(lowRGE_highConfoundCor)[[2]],
+             Model=names(percentChange(lowRGE_highConfoundCor)[[2]]),
+             Parameters="rGE=0.1, ConfounderCor=0.5-0.6"),
+  data.frame(B=percentChange(highRGE_highConfoundCor)[[2]], 
+             Model=names(percentChange(highRGE_highConfoundCor)[[2]]),
+             Parameters="rGE=0.5, ConfounderCor=0.5-0.6"),
+  data.frame(B=percentChange(lowRGE_highestConfoundCor)[[2]], 
+             Model=names(percentChange(lowRGE_highestConfoundCor)[[2]]),
+             Parameters="rGE=0.1,ConfounderCor=0.8-0.9"),
+  data.frame(B=percentChange(highRGE_highestConfoundCor)[[2]], 
+             Model=names(percentChange(highRGE_highestConfoundCor)[[2]]),
+             Parameters="rGE=0.5,ConfounderCor=0.8-0.9"))
+
+plotdf$Model<-as.character(plotdf$Model)
+plotdf$Model[plotdf$Model=="PRS_Env"] <- "PRS+Env"
+plotdf$Model[plotdf$Model=="PRS_Env_PC10.25"] <- "+PC 10-25%"
+plotdf$Model[plotdf$Model=="PRS_Env_PC25.50"] <- "+PC 26-50%"
+plotdf$Model[plotdf$Model=="PRS_Env_PC50.75"] <- "+PC 51-75%"
+plotdf$Model[plotdf$Model=="PRS_Env_PC75.99"] <- "+PC 76-99%"
+plotdf$Model<-factor(plotdf$Model, levels=c("PRS", "PRS+Env", "+PC 10-25%", "+PC 26-50%", "+PC 51-75%","+PC 76-99%"))
+
+plotdf$rGE<-as.numeric(stringr::str_split_fixed(stringr::str_split_fixed(plotdf$Parameters, n=2, pattern=",")[,1], n=2, pattern="=")[,2])
+
+plotdf$ConfounderCor<-(
+  stringr::str_split_fixed(
+    stringr::str_split_fixed(
+      plotdf$Parameters, n=2, pattern=",")[,2],
+    n=2, pattern="=")[,2])
+
+ggplot(plotdf, aes(x=Model, y=B, group=Parameters, color=ConfounderCor, shape=as.character(rGE))) +
+  geom_point()+
+  geom_path()+    
+  scale_color_manual(values=c(Colors))+
+  theme_bw()+theme(
+    plot.title= element_text(size = 15),
+    axis.title.x =  element_blank(),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size=12),
+    axis.title.y = element_text(size=12),
+    legend.text = element_text(size = 15),
+    legend.title= element_blank(),
+    legend.position="bottom", legend.box="vertical",legend.margin=margin())+
+  guides(fill=guide_legend(reverse=FALSE), 
+         colour=guide_legend(reverse=FALSE))
   
   
 
