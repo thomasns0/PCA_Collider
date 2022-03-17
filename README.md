@@ -12,19 +12,13 @@ Scripts associated with the manuscript "Principal Component Analysis Reduces Col
 - Concat_SimulationData_R2raw.R
     <i> : Concatenates the 50 R-squared output files from ColliderBiasPhRM_simulation_fenn.R</i>
 
-Logit and Probit Simulations
+Logit Simulation
 
 -   ColliderBiasPhRM_simulation_fenn_logit.R
       <i> : Runs simulation with logistic binary outcome variable on remote server as 50 jobs </i>
 
--   ColliderBiasPhRM_simulation_fenn_probit.R
-      <i> : Runs simulation with probit binary outcome variable on remote server as 50 jobs </i>
-
 -   Concat_SimulationData_logit.R
       <i> : Concatenates the 50 effect size files from ColliderBiasPhRM_simulation_fenn_logit.R</i>
-
--   Concat_SimulationData_probit.R
-      <i> : Concatenates the 50 effect size files from ColliderBiasPhRM_simulation_fenn_probit.R</i>
 
 Simulation output data is available here:
 https://drive.google.com/drive/folders/1Wpd9WoFL4C1Xt_xHX7VNDJGvP3mNwSzY?usp=sharing
@@ -61,10 +55,5 @@ PlotsAndTables
 - PlotPhRM_simulation_R2raw.R
     <i> : Plots R-squared from simulation with normally distributed continuous outcome variable</i>
 
-Plot Logit and Probit Simulations
-
--   PlotPhRM_simulation_logit.R
-      <i> : Plots effect sizes from simulation with logistic binary outcome variable</i>
- 
--   PlotPhRM_simulation_probit.R
-      <i> : Plots effect sizes from simulation with probit binary outcome variable</i>
+- PlotPhRM_simulation_logit.R
+    <i> : Plots effect sizes from simulation with logistic binary outcome variable</i>
